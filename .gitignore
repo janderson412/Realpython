@@ -1,0 +1,6 @@
+# ignores for OOPython3 projects
+.idea/
+venv/
+ENV/
+__pycache__/
+.ipynb_checkpoints/

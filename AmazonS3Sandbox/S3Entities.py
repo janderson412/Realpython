@@ -4,10 +4,8 @@ class Entity:
     def __init__(self, fullname):
         """Initializer.
 
-        Parameters
-        ----------
-            name: str
-                Full pathname of entity
+        :param name: Full pathname of entity
+        :type name: str
         """
         self._fullname = fullname
         parts = fullname.split('/')
@@ -17,10 +15,7 @@ class Entity:
     def FullPathname(self):
         """Full pathname of entity.
 
-        Returns
-        -------
-        str
-            Full pathname of entity
+        :returns: (str) Full pathname of entity
         """
         return self._name
 
@@ -28,10 +23,7 @@ class Entity:
     def Name(self):
         """Name of entity.
 
-        Returns
-        -------
-        str
-            Name of entity (without path)
+        :returns: (str) Name of entity (without path)
         """
         return self._name
 
@@ -40,10 +32,8 @@ class File(Entity):
     def __init__(self, fullname):
         """File initializer.
 
-        Parameters
-        ----------
-            fullname: str
-                Full pathname of file
+        :param fullname: Full pathname of file
+        :type fullname: str
         """
         super().__init__(self, fullname)
 
@@ -52,10 +42,8 @@ class Directory(Entity):
     def __init__(self, fullname):
         """Directory initializer.
 
-        Parameters
-        ----------
-            fullname: str
-                Full pathname of directory
+        :param fullname: Full pathname of directory
+        :type fullname: str
         """
         super().__init__(self, fullname)
         self._subentities = []
@@ -64,35 +52,27 @@ class Directory(Entity):
     def SubEntities(self):
         """Sub-entities.
 
-        Returns
-        -------
-        list
-            List of sub-entities (Directory and File objects)
+        :returns: (list) List of sub-entities (Directory and File objects)
         """
-        return self._subentities;
+        return self._subentities
 
     def Add(self, entity):
         """Add an entity.
 
-        Parameters
-        ----------
-        entity : Entity
-            Directory or File entity to add
-
+        :param entity: Entity to add to this entity
+        :type entity: Directory or File entity
+        :raises: Exception: attempt to add invalid type
         """
-        if (entity is Directory) or (entity is File):
+        if entity is Entity:
             self._subentities.append(entity)
         else:
-            raise Exception('Attempt to add invalid type of object, must be File or Directory')
+            raise Exception('Attempt to add invalid type of object, must be File or Directory entity')
 
     @property
     def SubDirectories(self):
-        """Get list of sub diretories
+        """Get list of sub directories
 
-        Returns
-        -------
-        iterable
-            List of sub-directories
+        :returns: (iterable) List of sub-directories
         """
         for entity in self._subentities:
             if entity is Directory:
@@ -102,10 +82,7 @@ class Directory(Entity):
     def Files(self):
         """Get list of files in this directory
 
-        Returns
-        -------
-        iterable
-            List of files
+        :returns: (iterable) List of files
         """
         for entity in self._subentities:
             if entity is File:

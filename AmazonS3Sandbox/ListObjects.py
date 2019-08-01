@@ -1,5 +1,6 @@
-import boto3
+import boto3, os
 from enum import Enum
+import sqlite3
 
 class StorageClass(Enum):
     STANDARD = 1
@@ -45,6 +46,34 @@ class BucketLister():
     def ListObjects(self):
         return self._bucket.objects.all()
 
+def CaptureToDatabase(bucketObjects, pathname):
+    if os.path.exists(pathname):
+        os.remove(pathname)
+    with sqlite3.connect(pathname) as db:
+        cursor = db.cursor()
+        cursor.execute('''CREATE TABLE "FileObjects" ( 
+            "Name"	TEXT,
+            "Size"	INTEGER,
+            "BillableSize"	INTEGER,
+            "StorageClass"  INTEGER,
+	        PRIMARY KEY("Name")
+            )''')
+        for obj in bucketObjects:
+            cursor.execute('''INSERT INTO FileObjects(Name,Size,BillableSize,StorageClass)
+                              VALUES(?,?,?,?)''', (obj.Name, obj.Size, obj.BillableSize, obj.StorageClass.value))
+
+def ListObjects(bucketObjects, verbose):
+    total_size = 0
+    total_billable_size = 0
+    for o in bucketObjects:
+        total_size += o.Size
+        total_billable_size += o.BillableSize
+        if verbose:
+            print(o.Name)
+
+    print(f'Total # objects = {len(bucketObjects):,}')
+    print(f'Total size = {total_size:,}')
+    print(f'Billable size = {total_billable_size:,}')
 
 if __name__ == "__main__":
 
@@ -53,26 +82,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='List contents of S3 bucket')
     parser.add_argument('--bucket', help='Name of bucket to list')
     parser.add_argument('-v', action='store_true', default=False, help='Verbose output (list all objects)')
+    parser.add_argument('--capture', help='Pathname to database to capture file information')
 
     args = parser.parse_args()
     bucketname = args.bucket
     lister = BucketLister(bucketname)
     values = lister.ListObjects()
+
     bucketObjects = [BucketObject(o) for o in values]
 
-    '''for obj in values:
-        print(obj.key)
-        parts = obj.key.split('/')
-        print(parts)'''
+    if args.capture != None:
+        CaptureToDatabase(bucketObjects, args.capture)
+    else:
+        ListObjects(bucketObjects, args.v)
 
-    total_size = 0
-    total_billable_size = 0
-    for o in bucketObjects:
-        total_size += o.Size
-        total_billable_size += o.BillableSize
-        if args.v:
-            print(o.Name)
-
-    print(f'Total # objects = {len(bucketObjects):,}')
-    print(f'Total size = {total_size:,}')
-    print(f'Billable size = {total_billable_size:,}')

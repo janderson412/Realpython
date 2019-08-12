@@ -1,6 +1,8 @@
 import boto3, os
 from enum import Enum
 import sqlite3
+import datetime
+import functools
 
 class StorageClass(Enum):
     STANDARD = 1
@@ -27,6 +29,10 @@ class BucketObject():
         return self._objectSummary.size
 
     @property
+    def Timestamp(self):
+        return self._objectSummary.last_modified
+
+    @property
     def BillableSize(self):
         if self.Size < self.MinBillableSize and (self.StorageClass == StorageClass.ONEZONE_IA or self.StorageClass == StorageClass.STANDARD_IA):
             return self.MinBillableSize
@@ -46,6 +52,16 @@ class BucketLister():
     def ListObjects(self):
         return self._bucket.objects.all()
 
+def TimeMethod(method):
+    @functools.wraps(method)
+    def wrapper_decorator(*args, **kwargs):
+        t1 = datetime.datetime.now()
+        method(*args, **kwargs)
+        t2 = datetime.datetime.now()
+        delta = t2 - t1
+        print(f'Total time to run: {delta.total_seconds()} seconds.')
+    return wrapper_decorator
+
 def CaptureToDatabase(bucketObjects, pathname):
     if os.path.exists(pathname):
         os.remove(pathname)
@@ -54,13 +70,24 @@ def CaptureToDatabase(bucketObjects, pathname):
         cursor.execute('''CREATE TABLE "FileObjects" ( 
             "Name"	TEXT,
             "Size"	INTEGER,
+            "Time"  TEXT,
             "BillableSize"	INTEGER,
             "StorageClass"  INTEGER,
 	        PRIMARY KEY("Name")
             )''')
         for obj in bucketObjects:
-            cursor.execute('''INSERT INTO FileObjects(Name,Size,BillableSize,StorageClass)
-                              VALUES(?,?,?,?)''', (obj.Name, obj.Size, obj.BillableSize, obj.StorageClass.value))
+            cursor.execute('''INSERT INTO FileObjects(Name,Size,Time,BillableSize,StorageClass)
+                              VALUES(?,?,?,?,?)''', (obj.Name, obj.Size, obj.Timestamp.strftime('%Y-%m-%d %H:%M:%S.%f'), obj.BillableSize, obj.StorageClass.value))
+
+@TimeMethod
+def SummaryOfDatabase(pathname):
+    with sqlite3.connect(pathname) as db:
+        cursor = db.cursor()
+        cursor.execute('SELECT count(*), sum(Size) FROM FileObjects')
+        result = cursor.fetchone()
+        numItems = result[0]
+        totalSize = result[1]
+        print(f'# Files = {numItems}  Total size = {totalSize:,}')
 
 def ListObjects(bucketObjects, verbose):
     total_size = 0
@@ -83,16 +110,21 @@ if __name__ == "__main__":
     parser.add_argument('--bucket', help='Name of bucket to list')
     parser.add_argument('-v', action='store_true', default=False, help='Verbose output (list all objects)')
     parser.add_argument('--capture', help='Pathname to database to capture file information')
+    parser.add_argument('--dbsummary', help='Pathname to database to show summary')
 
     args = parser.parse_args()
-    bucketname = args.bucket
-    lister = BucketLister(bucketname)
-    values = lister.ListObjects()
 
-    bucketObjects = [BucketObject(o) for o in values]
-
-    if args.capture != None:
-        CaptureToDatabase(bucketObjects, args.capture)
+    if args.dbsummary != None:
+        SummaryOfDatabase(args.dbsummary)
     else:
-        ListObjects(bucketObjects, args.v)
+        bucketname = args.bucket
+        lister = BucketLister(bucketname)
+        values = lister.ListObjects()
+
+        bucketObjects = [BucketObject(o) for o in values]
+
+        if args.capture != None:
+            CaptureToDatabase(bucketObjects, args.capture)
+        else:
+            ListObjects(bucketObjects, args.v)
 

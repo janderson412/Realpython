@@ -31,7 +31,34 @@ def timer():
     finally:
         t2 = time.perf_counter()
         elapsed = t2 - t1
-        print(f'(timer() func: Elapsed time:{elapsed} sec')
+        print(f'timer() func: Elapsed time:{elapsed} sec')
+
+class Counter():
+    def __init__(self, currentValue):
+        self.__current_value = currentValue
+
+    @property
+    def CurrentValue(self):
+        return self.__current_value
+
+    def Decrement(self):
+        value = self.__current_value - 1
+        if value < 0:
+            raise ValueError
+        self.__current_value = value
+        return value
+
+    def Increment(self):
+        self.__current_value += 1
+        return self.__current_value
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type != None:
+            print(f'Exception caught in context exit: exc_type:[{exc_type}] exc_val:[{exc_val}] exc_tb:[{exc_tb}]')
+            return True
 
 
 if __name__ == "__main__":
@@ -41,9 +68,13 @@ if __name__ == "__main__":
     with TimerClass() as t2:
         test_func(10000000)
 
-    with TimerClass() as t3:
-        test_func(50000000)
-
     with timer() as t:
-        test_func(50000000)
+        test_func(20000000)
 
+    with Counter(10) as counter:
+        for _ in range(12):
+            print(f'counter.CurrentValue = {counter.CurrentValue} decrementing...')
+            counter.Decrement()
+            print(f'counter.CurrentValue = {counter.CurrentValue} after decrement.')
+
+    print(f'Exited with counter.CurrentValue = {counter.CurrentValue}')

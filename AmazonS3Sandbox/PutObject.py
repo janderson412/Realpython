@@ -1,5 +1,6 @@
 import boto3
-import datetime
+from datetime import datetime
+import os
 
 if __name__ == "__main__":
     '''Usage:
@@ -16,4 +17,5 @@ if __name__ == "__main__":
     s3 = boto3.resource('s3')
     s3_object = s3.Object(args.bucket, args.key)
     f = open(args.file, 'rb')
-    s3_object.put(Body=f, Metadata={'date' : datetime.datetime.now().strftime('%Y-%M-%d %H:%M:%S')})
+    date_str = datetime.fromtimestamp(os.path.getmtime(args.file)).strftime('%Y-%m-%d %H:%M:%S')
+    s3_object.put(Body=f, Metadata={'date': date_str})
